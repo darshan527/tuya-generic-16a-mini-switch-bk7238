@@ -1,0 +1,201 @@
+esphome:
+  name: mini-switch
+  friendly_name: "Mini Switch"
+  on_boot:
+    - priority: 600
+      then:
+        - delay: 500ms
+        # 1. Check if this is a double flick (quick power cycle)
+        - if:
+            condition:
+              - lambda: 'return id(quick_power_cycle);'
+            then:
+              # Quick power cycle detected -> force relay ON
+              - switch.turn_on: relay_1
+            else:
+              # Normal power-on -> follow configured Restart Status
+              - script.execute: apply_power_on_behavior
+        # Set quick_power_cycle to true; if power is cut within 5s, it remains true for next boot
+        - globals.set:
+            id: quick_power_cycle
+            value: 'true'
+        - delay: 5s
+        # After running stably for 5s, reset to false
+        - globals.set:
+            id: quick_power_cycle
+            value: 'false'
+        - script.execute: update_led
+
+globals:
+  - id: quick_power_cycle
+    type: bool
+    restore_value: yes
+    initial_value: 'false'
+
+bk72xx:
+  board: generic-bk7238-tuya
+
+preferences:
+  flash_write_interval: 1s
+
+logger:
+
+api:
+
+web_server:
+  port: 80
+
+wifi:
+  # Enable fallback Hotspot / Captive Portal
+  ap:
+    ssid: "Mini-Switch-Fallback"
+    password: ""
+
+captive_portal:
+
+# LED Output Pin 17
+output:
+  - platform: gpio
+    pin: P17
+    id: led_output
+    inverted: false
+
+# Select entities with immediate action execution
+select:
+  - platform: template
+    name: "Indicator Light Mode"
+    id: led_mode
+    icon: "mdi:led-on"
+    optimistic: true
+    restore_value: true
+    initial_option: "Follow Switch"
+    options:
+      - "Off Always"
+      - "Follow Switch"
+      - "Inverted Switch"
+      - "Always On"
+    set_action:
+      - lambda: |-
+          id(led_mode).publish_state(x);
+          id(update_led).execute();
+
+  - platform: template
+    name: "External Switch Type"
+    id: ext_switch_type
+    icon: "mdi:toggle-switch"
+    optimistic: true
+    restore_value: true
+    initial_option: "Rocker - Flip to Change State"
+    options:
+      - "Rocker - Flip to Change State"
+      - "Rocker - State Synchronous"
+      - "Button Switch (Momentary)"
+    set_action:
+      - lambda: |-
+          id(ext_switch_type).publish_state(x);
+          if (x == "Rocker - State Synchronous") {
+            if (id(ext_switch).state) {
+              id(relay_1).turn_on();
+            } else {
+              id(relay_1).turn_off();
+            }
+          }
+
+  - platform: template
+    name: "Restart Status"
+    id: power_on_behavior
+    icon: "mdi:restart"
+    optimistic: true
+    restore_value: true
+    initial_option: "Restart Memory"
+    options:
+      - "Power-off"
+      - "Power-on"
+      - "Restart Memory"
+    set_action:
+      - lambda: |-
+          id(power_on_behavior).publish_state(x);
+
+# Relay (Pin 26) with saved state
+switch:
+  - platform: gpio
+    name: "Relay"
+    id: relay_1
+    pin: P26
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: update_led
+    on_turn_off:
+      - script.execute: update_led
+
+# Scripts to handle Tuya features
+script:
+  - id: update_led
+    then:
+      - lambda: |-
+          if (!id(led_mode).has_state()) return;
+          std::string mode = id(led_mode).current_option();
+          bool relay_state = id(relay_1).state;
+          if (mode == "Off Always") {
+            id(led_output).turn_off();
+          } else if (mode == "Always On") {
+            id(led_output).turn_on();
+          } else if (mode == "Follow Switch") {
+            if (relay_state) id(led_output).turn_on();
+            else id(led_output).turn_off();
+          } else if (mode == "Inverted Switch") {
+            if (relay_state) id(led_output).turn_off();
+            else id(led_output).turn_on();
+          }
+
+  - id: apply_power_on_behavior
+    then:
+      - lambda: |-
+          if (!id(power_on_behavior).has_state()) return;
+          std::string behavior = id(power_on_behavior).current_option();
+          if (behavior == "Power-off") {
+            id(relay_1).turn_off();
+          } else if (behavior == "Power-on") {
+            id(relay_1).turn_on();
+          }
+          // If "Restart Memory", RESTORE_DEFAULT_OFF already restored the previous state!
+
+binary_sensor:
+  # On-board physical push button (Pin 15)
+  - platform: gpio
+    pin:
+      number: P15
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Button"
+    on_press:
+      - switch.toggle: relay_1
+
+  # External Wall Switch (Pin 6)
+  - platform: gpio
+    pin:
+      number: P6
+      mode: INPUT_PULLUP
+    name: "External Switch"
+    id: ext_switch
+    # 1. Momentary / Push Button: toggles on press
+    on_press:
+      - if:
+          condition:
+            lambda: 'return id(ext_switch_type).has_state() && id(ext_switch_type).current_option() == "Button Switch (Momentary)";'
+          then:
+            - switch.toggle: relay_1
+    # 2. Rocker Switch modes:
+    on_state:
+      - lambda: |-
+          if (!id(ext_switch_type).has_state()) return;
+          std::string sw_type = id(ext_switch_type).current_option();
+          if (sw_type == "Rocker - Flip to Change State") {
+            id(relay_1).toggle();
+          } else if (sw_type == "Rocker - State Synchronous") {
+            if (x) {
+              id(relay_1).turn_on();
+            } else {
+              id(relay_1).turn_off();
+            }
+          }
