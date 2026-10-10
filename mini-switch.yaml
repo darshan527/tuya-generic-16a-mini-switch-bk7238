@@ -1,6 +1,7 @@
 esphome:
   name: mini-switch
   friendly_name: "Mini Switch"
+  name_add_mac_suffix: true
   on_boot:
     - priority: 600
       then:
@@ -42,16 +43,32 @@ logger:
 
 api:
 
-web_server:
-  port: 80
+ota:
+  - platform: esphome
 
 wifi:
-  # Enable fallback Hotspot / Captive Portal
+  # Fallback Hotspot / Captive Portal
   ap:
     ssid: "Mini-Switch-Fallback"
-    password: ""
+    password: "Test@123"
 
 captive_portal:
+
+# Diagnostic Wi-Fi Sensors (dBm and percentage)
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: "diagnostic"
 
 # LED Output Pin 17
 output:

@@ -51,6 +51,8 @@ This repository contains the complete documentation, ESPHome configuration (`min
    * If the wall switch/circuit breaker is toggled off and quickly turned back on within 5 seconds, it overrides the memory and forces the relay **ON**.
 6. **Instant UI Execution**:
    * Changing any dropdown in Home Assistant or Web UI updates immediately without needing to toggle the relay.
+7. **Diagnostic Wi-Fi Signal Sensors**:
+   * Exposes both **WiFi Signal dB** (RSSI in dBm) and **WiFi Signal Percent** (%) as diagnostic entities in Home Assistant.
 
 ---
 
@@ -87,8 +89,8 @@ sudo ./UnTuyaOS3.sh -i <WIFI_INTERFACE>
 * Click **Update**.
 
 ### 5. Wi-Fi Onboarding (Captive Portal)
-* After updating, the switch boots into clean ESPHome and starts a Wi-Fi hotspot: `Mini-Switch-Fallback`.
-* Connect to it from your phone or PC (open captive portal at `http://192.168.4.1`).
+* After updating, the switch boots into clean ESPHome and starts a Wi-Fi hotspot: `Mini-Switch-Fallback` (Password: `Test@123`).
+* Connect to it from your phone or PC (the portal will automatically prompt, or open `http://192.168.4.1`).
 * Choose your home Wi-Fi and enter your password.
 * The credentials will be saved directly into device flash memory. The switch will automatically connect to your network and pop up in Home Assistant!
 
@@ -116,11 +118,14 @@ The output firmware files will be generated under:
 
 ### Flashing via OTA (Network)
 
-You can flash over Wi-Fi directly using ESPHome:
-```bash
-esphome run mini-switch.yaml --device <DEVICE_IP>
-```
-Or upload `firmware.uf2` via the web browser at `http://<DEVICE_IP>`.
+Once adopted in Home Assistant, you can update firmware over-the-air anytime without web browser pages:
+
+1. **Via Home Assistant / ESPHome Dashboard**:
+   * Whenever you make changes in your ESPHome Dashboard in Home Assistant, simply click **Install** ➔ **Wirelessly**. Home Assistant will stream and flash the update directly over port 8892 using native ESPHome OTA.
+2. **Via Command Line**:
+   ```bash
+   esphome run mini-switch.yaml --device <DEVICE_IP>
+   ```
 
 ---
 
