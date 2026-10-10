@@ -15,6 +15,11 @@ This repository contains the complete documentation, ESPHome configuration (`min
 * **UnTuyaOS3 Tool**: [tuya-cloudcutter/UnTuyaOS3](https://github.com/tuya-cloudcutter/UnTuyaOS3)
 * **Elektroda Forum Discussion**: [Topic 4161841](https://www.elektroda.com/rtvforum/topic4161841.html)
 
+## Device Images
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/5e459069-0c88-4478-a2f7-246263928c54" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/1766c346-500b-49c4-a66f-669cb9da38d1" />
+
+
 ### Pin Mapping
 
 | Pin | Function | Description |
